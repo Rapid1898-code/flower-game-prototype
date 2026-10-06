@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grown Words - Interactive Client Prototype</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --primary-color: #2c3e50;
+            --accent-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --text-color: #34495e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            color: #7f8c8d;
+        }
+
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+            position: relative;
+        }
+
+        canvas {
+            background: #fafafa;
+            border-radius: 8px;
+            border: 1px solid #ecf0f1;
+            margin-bottom: 20px;
+        }
+
+        .word-display {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+        }
+
+        .word-letter {
+            border-bottom: 4px solid var(--primary-color);
+            min-width: 30px;
+            text-align: center;
+            height: 45px;
+        }
+
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            width: 100%;
+        }
+
+        .key {
+            background: #ecf0f1;
+            border: none;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--primary-color);
+        }
+
+        .key:hover:not(:disabled) {
+            background: #bdc3c7;
+        }
+
+        .key:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .key.correct {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .key.wrong {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .controls-container {
+            margin-top: 25px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .reset-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .reset-btn:hover {
+            background: #1a252f;
+        }
+
+        /* Modal Overlay & Box */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(44, 62, 80, 0.85);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h2 {
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .email-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .email-input {
+            padding: 14px;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .email-input:focus {
+            border-color: var(--accent-color);
+        }
+
+        .submit-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .submit-btn:hover {
+            background: #27ae60;
+        }
+
+        .game-status-banner {
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            height: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Grown Words</h1>
+        <p>Guess the hidden word to grow the flower.</p>
+    </header>
+
+    <main class="game-container">
+        <!-- 2D Canvas Layer for Flower Assembly -->
+        <canvas id="flowerCanvas" width="250" height="250"></canvas>
+
+        <!-- Dynamic Mystery Word Display -->
+        <div class="word-display" id="wordDisplay"></div>
+
+        <!-- On-screen Keyboard Interactive Matrix -->
+        <div class="keyboard" id="keyboard"></div>
+
+        <div class="game-status-banner" id="gameStatus"></div>
+
+        <!-- Reset Button for easy client testing -->
+        <div class="controls-container">
+            <button class="reset-btn" onclick="initGame()">Restart Prototype</button>
+        </div>
+    </main>
+
+    <!-- Marketing Lead Generation / Gameplay Gate Modal -->
+    <div class="modal-overlay" id="gateModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">The Flower Needs Help! 🌸</h2>
+            <p id="modalDescription">You've hit 3 incorrect guesses. Unlock unlimited guesses and see the flower bloom by validating your email below.</p>
+            <form class="email-form" id="leadForm" onsubmit="handleFormSubmit(event)">
+                <input type="email" class="email-input" id="emailInput" placeholder="Enter your email address" required>
+                <button type="submit" class="submit-btn">Continue Playing</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Game Logic State Configurations
+        const wordsList = ["DEVELOPER", "INTERFACE", "PROTOTYPE", "CANVAS", "INTERACTIVE"];
+        let targetWord = "";
+        let guessedLetters = new Set();
+        let wrongGuessesCount = 0;
+        let isGated = false;
+        let isGateUnlocked = false; 
+        const maxWrongGuesses = 7; // Matching total stages of flower assembly
+
+        // Trigger Configuration Gate
+        const GATE_AT_WRONG_GUESSES = 3;
+
+        // DOM Elements
+        const canvas = document.getElementById("flowerCanvas");
+        const ctx = canvas.getContext("2d");
+        const wordDisplay = document.getElementById("wordDisplay");
+        const keyboardContainer = document.getElementById("keyboard");
+        const gateModal = document.getElementById("gateModal");
+        const gameStatus = document.getElementById("gameStatus");
+
+        // Initialization Entrypoint
+        function initGame() {
+            targetWord = wordsList[Math.floor(Math.random() * wordsList.length)];
+            guessedLetters.clear();
+            wrongGuessesCount = 0;
+            isGated = false;
+            isGateUnlocked = false;
+            gameStatus.textContent = "";
+            gateModal.classList.remove("active");
+            document.getElementById("emailInput").value = "";
+            
+            renderWord();
+            renderKeyboard();
+            drawFlower(0);
+        }
+
+        // Render Secret Word View
+        function renderWord() {
+            wordDisplay.innerHTML = "";
+            let hasWon = true;
+
+            for (let char of targetWord) {
+                const element = document.createElement("div");
+                element.classList.add("word-letter");
+                if (guessedLetters.has(char)) {
+                    element.textContent = char;
+                } else {
+                    element.textContent = "";
+                    hasWon = false;
+                }
+                wordDisplay.appendChild(element);
+            }
+
+            if (hasWon && targetWord.length > 0) {
+                endGame(true);
+            }
+        }
+
+        // Generate Keyboard UI Matrix dynamically
+        function renderKeyboard() {
+            keyboardContainer.innerHTML = "";
+            const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            
+            for (let letter of letters) {
+                const button = document.createElement("button");
+                button.textContent = letter;
+                button.classList.add("key");
+                button.setAttribute("data-key", letter);
+                
+                if (guessedLetters.has(letter)) {
+                    button.disabled = true;
+                    if (targetWord.includes(letter)) {
+                        button.classList.add("correct");
+                    } else {
+                        button.classList.add("wrong");
+                    }
+                }
+
+                button.addEventListener("click", () => handleGuess(letter));
+                keyboardContainer.appendChild(button);
+            }
+        }
+
+        // Evaluation Engine logic for inputs
+        function handleGuess(letter) {
+            if (isGated || guessedLetters.has(letter) || wrongGuessesCount >= maxWrongGuesses) return;
+
+            guessedLetters.add(letter);
+
+            if (!targetWord.includes(letter)) {
+                wrongGuessesCount++;
+                drawFlower(wrongGuessesCount);
+
+                // Check evaluation conditions for showing the popup gate
+                if (wrongGuessesCount === GATE_AT_WRONG_GUESSES && !isGateUnlocked) {
+                    triggerEmailGate();
+                    renderWord();
+                    renderKeyboard();
+                    return;
+                }
+            }
+
+            renderWord();
+            renderKeyboard();
+
+            if (wrongGuessesCount >= maxWrongGuesses) {
+                endGame(false);
+            }
+        }
+
+        // Process Interactive 2D Drawing States
+        function drawFlower(stage) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 4;
+            ctx.lineCap = "round";
+
+            // Stage 1: The Pot Base Soil line
+            if (stage >= 1) {
+                ctx.strokeStyle = "#8b5a2b"; // Brown
+                ctx.beginPath();
+                ctx.moveTo(50, 220);
+                ctx.lineTo(200, 220);
+                ctx.stroke();
+            }
+
+            // Stage 2: The Stem Growth
+            if (stage >= 2) {
+                ctx.strokeStyle = "#27ae60"; // Green
+                ctx.beginPath();
+                ctx.moveTo(125, 220);
+                ctx.lineTo(125, 120);
+                ctx.stroke();
+            }
+
+            // Stage 3: First Leaf Asset
+            if (stage >= 3) {
+                ctx.fillStyle = "#2ecc71";
+                ctx.beginPath();
+                ctx.ellipse(105, 170, 20, 10, -Math.PI / 6, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
+            // Stage 4: Second Leaf Asset
+            if (stage >= 4) {
+                ctx.fillStyle = "#2ecc71";
+                ctx.beginPath();
+                ctx.ellipse(145, 150, 20, 10, Math.PI / 6, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
+            // Stage 5: Core Flower Bulb Center Node
+            if (stage >= 5) {
+                ctx.fillStyle = "#f1c40f"; // Yellow
+                ctx.beginPath();
+                ctx.arc(125, 100, 20, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
+            // Stage 6: First Ring Petals (Left/Right)
+            if (stage >= 6) {
+                ctx.fillStyle = "#e84393"; // Pink petals
+                // Left
+                ctx.beginPath(); ctx.arc(95, 100, 15, 0, 2 * Math.PI); ctx.fill();
+                // Right
+                ctx.beginPath(); ctx.arc(155, 100, 15, 0, 2 * Math.PI); ctx.fill();
+            }
+
+            // Stage 7: Top/Bottom Petals (Complete failure state visual asset)
+            if (stage >= 7) {
+                ctx.fillStyle = "#e84393";
+                // Top
+                ctx.beginPath(); ctx.arc(125, 70, 15, 0, 2 * Math.PI); ctx.fill();
+                // Bottom
+                ctx.beginPath(); ctx.arc(125, 130, 15, 0, 2 * Math.PI); ctx.fill();
+            }
+        }
+
+        // Lock gameplay mechanics and surface modal
+        function triggerEmailGate() {
+            isGated = true;
+            gateModal.classList.add("active");
+        }
+
+        // Process Sign up validation
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const emailValue = document.getElementById("emailInput").value;
+            
+            if(emailValue) {
+                // Mock API registration event hook
+                console.log(`Lead Captured Successfully: ${emailValue}`);
+                
+                // Lift state engine blocks
+                isGated = false;
+                isGateUnlocked = true;
+                gateModal.classList.remove("active");
+                
+                // Re-evaluate context controls
+                renderKeyboard();
+            }
+        }
+
+        // Handle structural win/loss lifecycle changes
+        function endGame(won) {
+            if(won) {
+                gameStatus.textContent = "You Won! The flower fully bloomed! 🎉";
+                gameStatus.style.color = "var(--accent-color)";
+            } else {
+                gameStatus.textContent = `Game Over. The word was: ${targetWord}`;
+                gameStatus.style.color = "var(--danger-color)";
+            }
+            // Freeze keyboard inputs out completely
+            disableAllKeys();
+        }
+
+        function disableAllKeys() {
+            const buttons = keyboardContainer.querySelectorAll("button");
+            buttons.forEach(btn => btn.disabled = true);
+        }
+
+        // Runtime Instantiation initialization hook 
+        window.onload = initGame;
+    </script>
+</body>
+</html>
